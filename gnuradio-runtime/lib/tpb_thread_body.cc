@@ -166,29 +166,8 @@ namespace gr {
       case block_executor::BLKD_OUT:	// Wait for output buffer space.
       {
 	gr::thread::scoped_lock guard(d->d_tpb.mutex);
-	while(!d->d_tpb.output_changed) {
-	  // wait for output room or message
-	  while(!d->d_tpb.output_changed && block->empty_handled_p())
-	    d->d_tpb.output_cond.wait(guard);
-
-	  // handle all pending messages
-          BOOST_FOREACH(basic_block::msg_queue_map_t::value_type &i, block->msg_queue) {
-            if(block->has_msg_handler(i.first)) {
-                while((msg = block->delete_head_nowait(i.first))) {
-                  guard.unlock();			// release lock while processing msg
-                  block->dispatch_msg(i.first, msg);
-                  guard.lock();
-                }
-            }
-            else {
-                // leave msg in queue if no handler is defined
-                // start dropping if we have too many
-                if(block->nmsgs(i.first) > max_nmsgs){
-                  GR_LOG_WARN(LOG,"asynchronous message buffer overflowing, dropping message");
-                  msg = block->delete_head_nowait(i.first);
-                }
-            }
-          }
+        while(!d->d_tpb.output_changed) {
+          d->d_tpb.output_cond.wait(guard);
         }
       }
       break;
